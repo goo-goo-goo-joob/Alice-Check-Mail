@@ -1,3 +1,5 @@
+from .mail import get_all_mail
+
 def handler(event, context):
     """
     Entry-point for Serverless Function.
@@ -5,7 +7,10 @@ def handler(event, context):
     :param context: information about current execution context.
     :return: response to be serialized as JSON.
     """
-    text = 'Hello! I\'ll repeat anything you say to me.'
+    # Приветствуем нового пользователя
+    if event['session']['new']:
+        text = 'Я могу проверить вашу почту, просто скажите мне об этом.'
+
     if 'request' in event and 'original_utterance' in event['request'] and len(
             event['request']['original_utterance']) > 0:
         text = event['request']['original_utterance']

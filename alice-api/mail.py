@@ -1,6 +1,9 @@
 import base64
 import email
 import imaplib
+import os
+
+from .passport import get_user_email
 
 
 class YandexIMAP(imaplib.IMAP4_SSL):
@@ -79,3 +82,52 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             return email.message_from_string(data[0][1].decode('utf-8'))
         else:
             self.error('can\'t get message number {}: {}'.format(num, typ))
+
+
+def get_all_mail():
+    '''
+    Эта функция должна собрать и вернуть всю почту.
+    '''
+    token = os.getenv('TOKEN')
+    email_addr = get_user_email(token)
+    imap = YandexIMAP()
+    imap.xoauth2(email_addr, token)
+    # Надо последовательно выбрать все ящики
+    ok, boxes = imap.list()
+    if ok != ok:
+        raise imap.error('can\'t get list: {}'.format(ok))
+    for box in boxes:
+        box = box.decode().split(' "|" ')[1]
+        print('USE ', box)
+        # Теоретически, может вернуть количество непрочитанных сообщений
+        # Флаг readonly нужен для непроставления статуса "прочитанно"
+        imap.select(box, readonly=True)
+        # Выбираем только непрочитанные
+        ok, messages = imap.search(None, '(UNSEEN)')
+        if ok != 'OK':
+            print('Can\'t get box {}'.format(box))
+        # Возвращает байтовую стоку с ID сообщений, фильтр требуется для корректной обработке пустого результата
+        for num in filter(None, messages[0].split(b' ')):
+            # Получаем сообщения класса email.message.Message.
+            msg = imap.select_msg(num)
+            # Декодируем тему
+            try:
+                print(email.header.decode_header(msg['Subject'])[0][0].decode('utf-8'))
+            except:
+                print(email.header.decode_header(msg['Subject'])[0][0])
+            # Декодируем отправителя (может потеряться адрес отправителя)
+            try:
+                print(email.header.decode_header(msg['From'])[0][0].decode('utf-8'))
+            except:
+                print(email.header.decode_header(msg['From'])[0][0])
+            try:
+                # Сообщение может состоять из серии сообщений, поэтому для корректной отработки понадобится
+                # рекурсивно пройтись по всем пэйлоадам и декодировать их.
+                # Может встречаться html, надо подумать над BeautifulSoap
+                print(msg.get_payload(decode=True).decode('utf-8'))
+            except:
+                print('Too deep')
+            print('----------')
+        print('-' * 60)
+    imap.close()
+    return
