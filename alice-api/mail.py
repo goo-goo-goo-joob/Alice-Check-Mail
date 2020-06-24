@@ -85,9 +85,9 @@ class YandexIMAP(imaplib.IMAP4_SSL):
 
 
 def get_all_mail():
-    '''
+    """
     Эта функция должна собрать и вернуть всю почту.
-    '''
+    """
     token = os.getenv('TOKEN')
     email_addr = get_user_email(token)
     imap = YandexIMAP()

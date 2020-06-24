@@ -11,10 +11,15 @@ def handler(event, context):
     if event['session']['new']:
         text = 'Я могу проверить вашу почту, просто скажите мне об этом.'
 
+        # Проверка авторизации
+        if 'access_token' not in event['session']['user']:
+            text += 'Но сначала нужно авторизоваться с помощью телефона.'
+            context['start_account_linking'] = {}
+
     if 'request' in event and 'original_utterance' in event['request'] and len(
             event['request']['original_utterance']) > 0:
         text = event['request']['original_utterance']
+
     context['response']['text'] = text
 
-    if 'access_token' not in event['session']['user']:
-        context['start_account_linking'] = {}
+
