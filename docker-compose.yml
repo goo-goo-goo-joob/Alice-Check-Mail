@@ -1,0 +1,10 @@
+version: '3'
+services:
+  alice-app:
+    build:
+      context: .
+    image: alice-check-mail:latest
+    ports:
+      - "8004:8080"
+    restart: always
+

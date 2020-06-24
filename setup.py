@@ -1,3 +1,10 @@
+__author__ = 'ml team'
+__maintainer__ = __author__
+
+__email__ = 'ml@asciishell.ru'
+__license__ = 'copyright'
+__version__ = '0.0.1'
+
 import os
 from importlib.machinery import SourceFileLoader
 
@@ -23,11 +30,11 @@ def load_requirements(fname: str) -> list:
 
 setup(
     name=module_name,
-    version=module.__version__,
-    author=module.__author__,
-    author_email=module.__email__,
-    license=module.__license__,
-    description=module.__doc__,
+    version=__version__,
+    author=__author__,
+    author_email=__email__,
+    license=__license__,
+    description=__doc__,
     packages=find_packages(exclude=['tests']),
     install_requires=load_requirements('requirements.txt'),
     entry_points={
