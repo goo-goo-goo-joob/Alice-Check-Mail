@@ -2,7 +2,7 @@ import base64
 import email
 import imaplib
 
-from .passport import get_user_email
+from alice_api.passport import get_user_email
 
 
 class YandexIMAP(imaplib.IMAP4_SSL):

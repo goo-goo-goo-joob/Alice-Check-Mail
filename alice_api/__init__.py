@@ -1,8 +1,16 @@
+__author__ = 'ml team'
+__maintainer__ = __author__
+
+__email__ = 'ml@asciishell.ru'
+__license__ = 'copyright'
+__version__ = '0.0.1'
+
+import json
+import random
+from enum import Enum, auto
+
 from flask import Flask
 from flask import request
-import json
-from enum import Enum, auto
-import random
 
 app = Flask(__name__)
 
@@ -108,4 +116,3 @@ def main():
         ensure_ascii=False,
         indent=2
     )
-
