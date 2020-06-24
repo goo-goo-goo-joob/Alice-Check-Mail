@@ -1,7 +1,6 @@
 import base64
 import email
 import imaplib
-import os
 
 from .passport import get_user_email
 
@@ -84,11 +83,10 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             self.error('can\'t get message number {}: {}'.format(num, typ))
 
 
-def get_all_mail():
+def get_all_mail(token):
     """
     Эта функция должна собрать и вернуть всю почту.
     """
-    token = os.getenv('TOKEN')
     email_addr = get_user_email(token)
     imap = YandexIMAP()
     imap.xoauth2(email_addr, token)
