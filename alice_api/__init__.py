@@ -1,8 +1,9 @@
+import json
+import random
+from enum import Enum, auto
+
 from flask import Flask
 from flask import request
-import json
-from enum import Enum, auto
-import random
 
 app = Flask(__name__)
 
@@ -108,4 +109,3 @@ def main():
         ensure_ascii=False,
         indent=2
     )
-

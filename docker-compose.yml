@@ -1,0 +1,10 @@
+version: '3'
+services:
+  alice-app:
+    build:
+      context: .
+    image: mlao/alice_api:latest
+    ports:
+      - "5000:5000"
+    restart: always
+
