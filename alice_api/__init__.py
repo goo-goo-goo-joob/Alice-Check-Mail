@@ -1,9 +1,10 @@
 import json
 import random
-from enum import Enum, auto
 
 from flask import Flask
 from flask import request
+
+from .handlers import *
 
 app = Flask(__name__)
 
@@ -16,7 +17,6 @@ class UserRecord:
         self.email = None
         self.token = None
         self.inbox = None
-        self.state = States.START
 
 
 class SessionStorage:
@@ -41,11 +41,6 @@ class SessionStorage:
 storage = SessionStorage()
 
 
-class States(Enum):
-    START = auto()
-    CHECK = auto()
-
-
 def handler_start(req, res):
     text = 'Я могу проверить вашу почту, просто скажите мне об этом.'
     res['response']['text'] = text
@@ -61,7 +56,7 @@ def choose_start(req, res):
 def handler_check(req, res):
     text = 'Проверила вашу почту. У вас 2 новых сообщения. Хотите прочитаю?'
     res['response']['text'] = text
-    storage.get(req['session']['user_id']).state = States.CHECK
+
 
 
 def choose_check(req, res):
@@ -93,7 +88,8 @@ def main():
         "version": request.json['version'],
         "session": request.json['session'],
         "response": {
-            "end_session": False
+            "end_session": False,
+            "text": ""
         }
     }
     user = storage.get(request.json['session']['user_id'])
@@ -109,3 +105,78 @@ def main():
         ensure_ascii=False,
         indent=2
     )
+
+
+def main_handler(req, response):
+
+    #TODO: Проверка на запрос выхода и помощи
+
+    if 'state' not in req:
+        start_handler(req, response)
+        return
+
+    curState = req['state']['session']['value']
+
+    if curState == States.OneMAIL:
+        return
+
+
+def start_handler(req, response):
+
+    # Проверка авторизованности пользователя
+    if (random.random() > 0.7):
+        #отправка сообщения об авторизации
+        do_auth(req, response)
+        return
+
+    # Получение числа отправителей
+    M = int(int(random.random() * 10) / 3)
+
+    # Получение числа писем (общее)
+    N = int(int(random.random() * 10) / 3) + M
+
+    if N == 0:
+        # Писем нет
+        do_no_mails(req, response)
+        return
+
+    if N == 1 and M == 1:
+        # 1 письмо
+        name = "RandomName"
+        topic = "RandomTopic"
+
+        do_one_mail(req, response, name, topic)
+        return
+
+    if N > 1 and M == 1:
+        # Несколько писем от 1 отправителя
+        name = "RandomName"
+        topics = []
+        for i in range(N):
+            topics.append('RandomTopic{}'.format(i+1))
+
+        do_one_sender(req, response, name, topics)
+        return
+
+    if N > 1 and M > 1:
+        # Несколько писем от нескольких отправителей
+        names = []
+        Ntopics = dict()
+        for i in range(M):
+            names.append('RandomName{}'.format(i+1))
+            if i+1 == M:
+                Ntopics['RandomName{}'.format(i+1)] = N - i
+            else:
+                Ntopics['RandomName{}'.format(i+1)] = 1
+
+        do_many_senders(req, response, names ,Ntopics)
+        return
+    else:
+        do_error(req, response)
+        return
+
+
+
+
+
+
