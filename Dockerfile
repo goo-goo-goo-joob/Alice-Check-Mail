@@ -12,5 +12,6 @@ FROM snakepacker/python:3.7 as api
 
 COPY --from=builder /usr/share/python3/app /usr/share/python3/app
 
+RUN ln -snf /usr/share/python3/app/bin/alice_api /usr/local/bin/
 ENV FLASK_APP=alice-api/__init__.py
-CMD ["flask run"]
+CMD ["alice_api"]

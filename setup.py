@@ -39,7 +39,7 @@ setup(
     install_requires=load_requirements('requirements.txt'),
     entry_points={
         'console_scripts': [
-            '{0} = {0}.__main__'.format(module_name),
+            '{0} = {0}.__main__:main'.format(module_name),
         ]
     },
     include_package_data=True
