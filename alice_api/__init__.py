@@ -1,16 +1,18 @@
 import json
 import random
+import datetime
 
 from enum import Enum, auto
 from flask import Flask
 from flask import request
 
-
+from alice_api.mail import YandexIMAP
+from alice_api.passport import get_user_email
 
 app = Flask(__name__)
 
-AGREE = ['Проверь почту', 'Хочу', 'Давай']
-DISAGREE = ['нет']
+AGREE = ['проверь почту', 'хочу', 'давай', 'да']
+DISAGREE = ['нет', 'не хочу', 'не надо']
 
 
 class States(Enum):
@@ -36,6 +38,59 @@ class UserRecord:
         self.token = None
         self.inbox = None
         self.state = None
+        self.inbox_date = None
+
+    @property
+    def is_auth(self):
+        """
+        Проверка авторизации пользователя
+        """
+        return self.token is not None
+
+    def _check_passport(self):
+        if self.email is None:
+            self.email = get_user_email(self.token)
+
+    def _check_mail(self):
+        self._check_passport()
+        imap = YandexIMAP()
+        imap.xoauth2(self.email, self.token)
+        self.inbox = imap.get_all_mail()
+        self.inbox_date = datetime.datetime.now()
+        imap.close()
+
+    @property
+    def get_senders(self):
+        """
+        Проверяет (обновляет) почту и получает всех отправителей с количеством писем от них
+        """
+        self._check_mail()
+        senders = {}
+        for unit_mail in self.inbox:
+            if unit_mail['sender'] not in senders:
+                senders[unit_mail['sender']] = 1
+            else:
+                senders[unit_mail['sender']] += 1
+        return senders
+
+    @property
+    def get_count_mail(self):
+        """
+        Получает число всех писем
+        """
+        return len(self.inbox)
+
+    def get_mail_from(self, sender, number):
+        """
+        Получает письмо (отправитель, тема, текст) с заданным номером от заданного отправителя
+        """
+        i = 0
+        for unit_mail in self.inbox:
+            if unit_mail['sender'] == sender:
+                i += 1
+                if i == number:
+                    return unit_mail
+        raise Exception('Простите, не могу прочитать это письмо.')
 
 
 class SessionStorage:
@@ -75,7 +130,6 @@ def choose_start(req, res):
 def handler_check(req, res):
     text = 'Проверила вашу почту. У вас 2 новых сообщения. Хотите прочитаю?'
     res['response']['text'] = text
-
 
 
 def choose_check(req, res):
@@ -127,25 +181,35 @@ def main():
 
 
 def main_handler(req, res):
-
-    #TODO: Проверка на запрос выхода и помощи
+    # TODO: Проверка на запрос выхода и помощи
 
     if 'state' not in req:
         start_handler(req, res)
         return
 
     curState = req['state']['session']['value']
+    req['request']['original_utterance'] = req['request']['original_utterance'].lower()
+
+    user = storage.get(request.json['session']['user_id'])
+    if 'access_token' not in req['session']['user']:
+        user.token = req['session']['user']['access_token']
+    else:
+        user.token = None
+
+    req['userRecord'] = user
 
     if curState == States.AUTH:
         start_handler(req, res)
         return
 
     if curState == States.OneMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request'][
+            'original_utterance'] in AGREE:
             read_message(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request'][
+            'original_utterance'] in DISAGREE:
             do_any_help(req, res)
             return
 
@@ -171,10 +235,9 @@ def main_handler(req, res):
 
 
 def start_handler(req, res):
-
     # Проверка авторизованности пользователя
     if (random.random() > 0.7):
-        #отправка сообщения об авторизации
+        # отправка сообщения об авторизации
         do_auth(req, res)
         return
 
@@ -210,8 +273,7 @@ def start_handler(req, res):
 
 
 def read_message(req, res):
-
-    #TODO: content - содержание письма
+    # TODO: content - содержание письма
     content = 'Состояние сессии перестанет храниться, если в ответе навыка не вернуть свойство session_state. Поэтому если для конкретного запроса состояние не меняется, но его нужно продолжать хранить, навыку следует вернуть тот же объект session_state, что пришел в запросе.'
     name = 'RandomName'
 
@@ -223,7 +285,7 @@ def read_message(req, res):
 
 
 def do_error(req, res):
-    text = 'Error!!! '
+    text = 'Ошибка!'
     res['response']['text'] += text
 
 
@@ -269,7 +331,7 @@ def do_one_sender(req, res):
     name = "RandomName"
     topics = []
     for i in range(N):
-        topics.append('RandomTopic{}'.format(i+1))
+        topics.append('RandomTopic{}'.format(i + 1))
 
     text = 'От {0} пришло {1} писем с темами: '.format(name, len(topics))
     for i in range(len(topics)):
@@ -287,11 +349,11 @@ def do_many_senders(req, res):
     names = []
     Ntopics = dict()
     for i in range(M):
-        names.append('RandomName{}'.format(i+1))
-        if i+1 == M:
-            Ntopics['RandomName{}'.format(i+1)] = N - i
+        names.append('RandomName{}'.format(i + 1))
+        if i + 1 == M:
+            Ntopics['RandomName{}'.format(i + 1)] = N - i
         else:
-            Ntopics['RandomName{}'.format(i+1)] = 1
+            Ntopics['RandomName{}'.format(i + 1)] = 1
 
     text = "У вас: "
     for i, name in enumerate(names):
@@ -348,10 +410,3 @@ def do_any_help(req, res):
     text = 'Я могу вам еще чем-то помочь? Проверить вашу почту еще раз? '
     res['response']['text'] += text
     res['user_state_update'] = States.AnyHELP
-
-
-
-
-
-
-
