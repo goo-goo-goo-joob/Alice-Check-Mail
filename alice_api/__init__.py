@@ -237,11 +237,11 @@ def do_not_understand(req, res):
 
 
 def do_auth(req, res):
-    # TODO: Здесь должна быть авторизация
-
     text = 'Я могу проверить вашу почту, просто скажите мне об этом. '
     res['response']['text'] += text
     res['user_state_update'] = States.AUTH
+    if 'access_token' not in req['session']['user']:
+        res['start_account_linking'] = {}
 
 
 def do_no_mails(req, res):
