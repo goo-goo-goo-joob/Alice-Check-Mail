@@ -6,6 +6,9 @@ from alice_api.passport import get_user_email
 
 
 class YandexIMAP(imaplib.IMAP4_SSL):
+    """
+    Этот класс предназначен только для хождения в почту.
+    """
     def __init__(self):
         super().__init__('imap.yandex.ru', 993)
 
@@ -82,50 +85,36 @@ class YandexIMAP(imaplib.IMAP4_SSL):
         else:
             self.error('can\'t get message number {}: {}'.format(num, typ))
 
-
-def get_all_mail(token):
-    """
-    Эта функция должна собрать и вернуть всю почту.
-    """
-    email_addr = get_user_email(token)
-    imap = YandexIMAP()
-    imap.xoauth2(email_addr, token)
-    # Надо последовательно выбрать все ящики
-    ok, boxes = imap.list()
-    if ok != ok:
-        raise imap.error('can\'t get list: {}'.format(ok))
-    for box in boxes:
-        box = box.decode().split(' "|" ')[1]
-        print('USE ', box)
-        # Теоретически, может вернуть количество непрочитанных сообщений
+    def get_all_mail(self):
+        """
+        Эта функция должна собрать и вернуть всю почту.
+        """
         # Флаг readonly нужен для непроставления статуса "прочитанно"
-        imap.select(box, readonly=True)
+        self.select('INBOX', readonly=True)
         # Выбираем только непрочитанные
-        ok, messages = imap.search(None, '(UNSEEN)')
+        ok, messages = self.search(None, '(UNSEEN)')
         if ok != 'OK':
-            print('Can\'t get box {}'.format(box))
+            raise Exception('Нельзя прочитать входящие сообщения')
         # Возвращает байтовую стоку с ID сообщений, фильтр требуется для корректной обработке пустого результата
+        all_mails = []
         for num in filter(None, messages[0].split(b' ')):
+            unit_mail = {}
             # Получаем сообщения класса email.message.Message.
-            msg = imap.select_msg(num)
+            msg = self.select_msg(num)
             # Декодируем тему
-            try:
-                print(email.header.decode_header(msg['Subject'])[0][0].decode('utf-8'))
-            except:
-                print(email.header.decode_header(msg['Subject'])[0][0])
+            unit_mail['subject'] = email.header.decode_header(msg['Subject'])[0][0]
+            if isinstance(unit_mail['subject'], bytes):
+                unit_mail['subject'] = unit_mail['subject'].decode('utf-8')
             # Декодируем отправителя (может потеряться адрес отправителя)
-            try:
-                print(email.header.decode_header(msg['From'])[0][0].decode('utf-8'))
-            except:
-                print(email.header.decode_header(msg['From'])[0][0])
+            unit_mail['from'] = email.header.decode_header(msg['From'])[0][0]
+            if isinstance(unit_mail['from'], bytes):
+                unit_mail['from'] = unit_mail['from'].decode('utf-8')
             try:
                 # Сообщение может состоять из серии сообщений, поэтому для корректной отработки понадобится
                 # рекурсивно пройтись по всем пэйлоадам и декодировать их.
                 # Может встречаться html, надо подумать над BeautifulSoap
-                print(msg.get_payload(decode=True).decode('utf-8'))
+                unit_mail['text'] = msg.get_payload(decode=True).decode('utf-8')
             except:
-                print('Too deep')
-            print('----------')
-        print('-' * 60)
-    imap.close()
-    return
+                unit_mail['text'] = 'К сожалению, такое я еще читать не научилась.'
+            all_mails.append(unit_mail)
+        return all_mails
