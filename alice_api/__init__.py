@@ -7,8 +7,11 @@ from flask import request
 
 app = Flask(__name__)
 
-AGREE = ['хочу', 'давай', 'да']
+AGREE = ['хочу', 'давай', 'да', 'ну давай']
 DISAGREE = ['нет']
+RELOAD = ['обновить', 'проверить почту']
+HELP = ['помощь', 'справка']
+EXIT = ['выход']
 
 
 # class States(Enum):
@@ -80,7 +83,7 @@ def handler_start(req, res):
 
 
 def choose_start(req, res):
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
         return handler_check(req, res)
     return handler_start(req, res)
 
@@ -91,7 +94,7 @@ def handler_check(req, res):
 
 
 def choose_check(req, res):
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
         return handler_read(req, res)
     return handler_start(req, res)
 
@@ -141,24 +144,41 @@ def main():
 
 
 def main_handler(req, res):
-    # TODO: Проверка на запрос выхода и помощи
 
-    if 'state' not in req:
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in HELP:
+        do_help(req, res)
+        return
+
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in EXIT:
+        do_exit(req, res)
+        return
+
+    # TODO: Проверка авторизованности пользователя
+    if (random.random() > 0.9):
+        do_auth(req, res)
+        return
+
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in RELOAD:
         start_handler(req, res)
         return
 
-    curState = req['state']['session']['value']
+    curState = 0
+    if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
+        curState = req['state']['session']['value']
+    else:
+        start_handler(req, res)
+        return
 
     if curState == States.AUTH:
         start_handler(req, res)
         return
 
     if curState == States.OneMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
             prep_read_message(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
             do_any_help(req, res)
             return
 
@@ -169,7 +189,7 @@ def main_handler(req, res):
 
         numMessge = get_number(req)
         if numMessge:
-            do_one_mail(req, res)
+            prep_read_message(req, res)
             return
 
         do_not_understand(req, res)
@@ -187,11 +207,11 @@ def main_handler(req, res):
 
     if curState == States.LargeMAIL:
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
             prep_read_message(req, res, cont=True)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
             other_mails(req, res)
             return
 
@@ -199,12 +219,24 @@ def main_handler(req, res):
         return
 
     if curState == States.AnyMoreMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
             start_handler(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
             do_any_help(req, res)
+            return
+
+        do_not_understand(req, res)
+        return
+
+    if curState == States.AnyHELP:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+            start_handler(req, res)
+            return
+
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
+            do_exit(req,res)
             return
 
         do_not_understand(req, res)
@@ -212,11 +244,6 @@ def main_handler(req, res):
 
 
 def start_handler(req, res):
-    # Проверка авторизованности пользователя
-    if (random.random() > 0.7):
-        # отправка сообщения об авторизации
-        do_auth(req, res)
-        return
 
     # Получение числа отправителей
     M = int(int(random.random() * 10) / 3)
@@ -294,6 +321,24 @@ def get_number(req):
     return False
 
 
+def numerals(num, word):
+    # Окончания числительных
+
+    if (num > 10 and num < 20) or (num % 10 > 4) or (num % 10 == 0):
+        # -ем
+        if word == 'мо':
+            return 'ем'
+    if num % 10 > 1 and num % 10 < 5:
+        # -ьма
+        if word == 'мо':
+            return 'ьма'
+    if num % 10 == 1:
+        # -ьмо
+        if word == 'мо':
+            return 'ьмо'
+    return '*'
+
+
 def do_error(req, res, msg):
     text = 'Error!!! ' + msg
     res['response']['text'] += text
@@ -308,11 +353,28 @@ def do_not_understand(req, res):
     res['user_state_update'] = temp_state
 
 
+def do_exit(req,res):
+
+    text = 'Пока '
+    res['response']['text'] += text
+    res['response']['end_session'] = True
+
+
+def do_help(req, res):
+
+    text = 'Я могу помочь вам проверить вашу почту, для этого просто скажите: "Проверить почту"'
+    res['response']['text'] += text
+    temp_state = States.AUTH
+    if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
+        temp_state = req['state']['session']['value']
+    res['user_state_update'] = temp_state
+
+
 # 0
 def do_auth(req, res):
     # TODO: Здесь должна быть авторизация
 
-    text = 'Я могу проверить вашу почту, просто скажите мне об этом. '
+    text = 'Пожалуйста авторизуйтесь '
     res['response']['text'] += text
     res['user_state_update'] = States.AUTH
 
@@ -341,14 +403,13 @@ def do_one_mail(req, res):
 # 3
 def do_one_sender(req, res):
     # От имя пришло n1 писем с темами: 1. тема1 2. тема2. Назовите номер письма, содержание которого хотите прослушать
-    # TODO: числительные
     N = 3
     name = "RandomName"
     topics = []
     for i in range(N):
         topics.append('RandomTopic{}'.format(i + 1))
 
-    text = 'От {0} пришло {1} писем с темами: '.format(name, len(topics))
+    text = 'От {0} пришло {1} пис{2} с темами: '.format(name, len(topics), numerals(len(topics), 'мо'))
     for i in range(len(topics)):
         text += '{0}. {1} '.format(i + 1, topics[i])
     text += 'Назовите номер письма, содержание которого хотите прослушать. '
@@ -359,7 +420,6 @@ def do_one_sender(req, res):
 # 4
 def do_many_senders(req, res):
     # У вас: 1. n1 писем от Имя1 2. n2 писем от Имя2. Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя
-    # TODO: числительные
     N = 5
     M = 3
     names = []
@@ -373,7 +433,7 @@ def do_many_senders(req, res):
 
     text = "У вас: "
     for i, name in enumerate(names):
-        text += '{0}. {1} писем от {2}. '.format(i + 1, Ntopics[name], name)
+        text += '{0}. {1} пис{3} от {2}. '.format(i + 1, Ntopics[name], name, numerals(Ntopics[name], 'мо'))
     text += 'Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя. '
     res['response']['text'] += text
     res['user_state_update'] = States.ManySENDERS
@@ -392,7 +452,6 @@ def do_small_mail(req, res, name, content):
 # 6
 def do_large_mail(req, res, name, content):
     # Письмо от Имя: (содержание первые 20 слов). Это были первые 20 слов, дальше продолжать?
-    # TODO: числительные
 
     text = 'Письмо от {}: {}. Это были первые 20 слов, дальше продолжать?'.format(name, content)
     res['response']['text'] += text
