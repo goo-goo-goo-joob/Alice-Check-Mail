@@ -32,7 +32,6 @@ class States(Enum):
 
 
 class UserRecord:
-    # TODO: set token
     def __init__(self, uid: str):
         self.uid = uid
         self.email = None
@@ -190,6 +189,14 @@ def main_handler(req, res):
 
     curState = req['state']['session']['value']
     req['request']['original_utterance'] = req['request']['original_utterance'].lower()
+
+    user = storage.get(request.json['session']['user_id'])
+    if 'access_token' not in req['session']['user']:
+        user.token = req['session']['user']['access_token']
+    else:
+        user.token = None
+
+    req['userRecord'] = user
 
     if curState == States.AUTH:
         start_handler(req, res)
