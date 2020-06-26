@@ -350,7 +350,7 @@ def do_not_understand(req, res):
     temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
         temp_state = req['state']['session']['value']
-    res['user_state_update'] = temp_state
+    save_state(res, temp_state)
 
 
 def do_exit(req,res):
@@ -367,7 +367,7 @@ def do_help(req, res):
     temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
         temp_state = req['state']['session']['value']
-    res['user_state_update'] = temp_state
+    save_state(res, temp_state)
 
 
 # 0
@@ -376,7 +376,7 @@ def do_auth(req, res):
 
     text = 'Пожалуйста авторизуйтесь '
     res['response']['text'] += text
-    res['user_state_update'] = States.AUTH
+    save_state(res, States.AUTH)
 
 
 # 1
@@ -385,7 +385,7 @@ def do_no_mails(req, res):
 
     text = 'У вас нет новых писем. '
     res['response']['text'] += text
-    res['user_state_update'] = States.NoMAILS
+    save_state(res, States.NoMAILS)
     do_any_help(req, res)
 
 
@@ -397,7 +397,7 @@ def do_one_mail(req, res):
 
     text = 'У вас 1 новое письмо от {0} с темой {1}. Вам прочитать это письмо? '.format(name, topic)
     res['response']['text'] += text
-    res['user_state_update'] = States.OneMAIL
+    save_state(res, States.OneMAIL)
 
 
 # 3
@@ -414,7 +414,7 @@ def do_one_sender(req, res):
         text += '{0}. {1} '.format(i + 1, topics[i])
     text += 'Назовите номер письма, содержание которого хотите прослушать. '
     res['response']['text'] += text
-    res['user_state_update'] = States.OneSENDER
+    save_state(res, States.OneSENDER)
 
 
 # 4
@@ -436,7 +436,7 @@ def do_many_senders(req, res):
         text += '{0}. {1} пис{3} от {2}. '.format(i + 1, Ntopics[name], name, numerals(Ntopics[name], 'мо'))
     text += 'Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя. '
     res['response']['text'] += text
-    res['user_state_update'] = States.ManySENDERS
+    save_state(res, States.ManySENDERS)
 
 
 # 5
@@ -445,7 +445,7 @@ def do_small_mail(req, res, name, content):
 
     text = 'Письмо от {0}: {1}'.format(name, content)
     res['response']['text'] += text
-    res['user_state_update'] = States.SmallMAIL
+    save_state(res, States.SmallMAIL)
     other_mails(req, res)
 
 
@@ -455,7 +455,7 @@ def do_large_mail(req, res, name, content):
 
     text = 'Письмо от {}: {}. Это были первые 20 слов, дальше продолжать?'.format(name, content)
     res['response']['text'] += text
-    res['user_state_update'] = States.LargeMAIL
+    save_state(res, States.LargeMAIL)
 
 
 # 9
@@ -464,7 +464,7 @@ def do_cont_mail(req, res, name, content):
 
     text = 'Продолжение письма от {0}: {1}'.format(name, content)
     res['response']['text'] += text
-    res['user_state_update'] = States.ContMAIL
+    save_state(res, States.ContMAIL)
     other_mails(req, res)
 
 
@@ -474,7 +474,7 @@ def do_no_more_mails(req, res):
 
     text = 'У вас больше нет новых сообщений. '
     res['response']['text'] += text
-    res['user_state_update'] = States.NoMoreMAIL
+    save_state(res, States.NoMoreMAIL)
     do_any_help(req, res)
 
 
@@ -484,7 +484,7 @@ def do_any_more_mails(req, res):
 
     text = 'У вас еще есть непрочитанные сообщения, вы хотите их прослушать? '
     res['response']['text'] += text
-    res['user_state_update'] = States.AnyMoreMAIL
+    save_state(res, States.AnyMoreMAIL)
 
 
 # 10
@@ -493,4 +493,7 @@ def do_any_help(req, res):
 
     text = 'Я могу вам еще чем-то помочь? Проверить вашу почту еще раз? '
     res['response']['text'] += text
-    res['user_state_update'] = States.AnyHELP
+    save_state(res, States.AnyHELP)
+
+def save_state(res, state):
+    res['session_state'] = {'value' : state}
