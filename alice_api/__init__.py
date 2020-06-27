@@ -213,7 +213,7 @@ def main():
     except ReadException:
         response['response']['text'] = 'Не удалось прочитать письма'
     except Exception:
-        response['response']['text'] = 'Неизвестная ошибка'
+        response['response']['text'] = 'Просто скажите мне "Проверь почту"'
 
     response['response']['text'] = response['response']['text'][:1023]
 
