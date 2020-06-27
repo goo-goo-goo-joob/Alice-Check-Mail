@@ -203,7 +203,8 @@ def main():
         response['response']['text'] = 'Не удалось воспроизвести письмо\n{}'.format(traceback.format_exc())
     except ReadException:
         response['response']['text'] = 'Не удалось прочитать письма\n{}'.format(traceback.format_exc())
-
+    except Exception:
+        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())
 
     response['response']['text'] = response['response']['text'][:1023]
 
