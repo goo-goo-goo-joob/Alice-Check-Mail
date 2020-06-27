@@ -1,6 +1,11 @@
 import base64
 import email
 import imaplib
+import re
+
+from bs4 import BeautifulSoup
+
+pattern = re.compile(r'\s+')
 
 
 class ReadException(Exception):
@@ -9,6 +14,25 @@ class ReadException(Exception):
 
 class ImapException(Exception):
     pass
+
+
+def decode_mail(msg):
+    if isinstance(msg.get_payload(), list):
+        return '\n'.join([decode_mail(m) for m in msg.get_payload()])
+    text = msg.get_payload(decode=True)
+    if isinstance(text, bytes):
+        text = text.decode('utf-8')
+    if msg.get_content_type() == 'text/html':
+        bs = BeautifulSoup(text, 'html5lib')
+        body = bs.find('body')
+        if body is None:
+            text = bs.text
+        else:
+            text = body.text
+    else:
+        text = ''
+    text = pattern.sub(' ', text.replace('\n', ''))
+    return text
 
 
 class YandexIMAP(imaplib.IMAP4_SSL):
@@ -108,6 +132,7 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             unit_mail = {}
             # Получаем сообщения класса email.message.Message.
             msg = self.select_msg(num)
+            unit_mail['raw'] = msg
             # Декодируем тему
             unit_mail['subject'] = email.header.decode_header(msg['Subject'])[0][0]
             if isinstance(unit_mail['subject'], bytes):
@@ -119,9 +144,8 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             try:
                 # Сообщение может состоять из серии сообщений, поэтому для корректной отработки понадобится
                 # рекурсивно пройтись по всем пэйлоадам и декодировать их.
-                # Может встречаться html, надо подумать над BeautifulSoap
-                unit_mail['text'] = msg.get_payload(decode=True).decode('utf-8')
-            except:
+                unit_mail['text'] = decode_mail(msg)
+            except Exception as e:
                 unit_mail['text'] = 'К сожалению, такое я еще читать не научилась.'
             all_mails.append(unit_mail)
         return all_mails
