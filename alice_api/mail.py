@@ -3,10 +3,19 @@ import email
 import imaplib
 
 
+class ReadException(Exception):
+    pass
+
+
+class ImapException(Exception):
+    pass
+
+
 class YandexIMAP(imaplib.IMAP4_SSL):
     """
     Этот класс предназначен только для хождения в почту.
     """
+
     def __init__(self):
         super().__init__('imap.yandex.ru', 993)
 
@@ -72,7 +81,7 @@ class YandexIMAP(imaplib.IMAP4_SSL):
         phrase = base64.b64encode(phrase.encode('utf-8'))
         typ, dat = self._command_complete('AUTHENTICATE', self._command_xoauth2(phrase))
         if typ != 'OK':
-            raise self.error(dat[-1].decode('utf-8', 'replace'))
+            raise ImapException(dat[-1].decode('utf-8', 'replace'))
         self.state = 'AUTH'
         return typ, dat
 
@@ -92,7 +101,7 @@ class YandexIMAP(imaplib.IMAP4_SSL):
         # Выбираем только непрочитанные
         ok, messages = self.search(None, '(UNSEEN)')
         if ok != 'OK':
-            raise Exception('Нельзя прочитать входящие сообщения')
+            raise ReadException('Нельзя прочитать входящие сообщения')
         # Возвращает байтовую стоку с ID сообщений, фильтр требуется для корректной обработке пустого результата
         all_mails = []
         for num in filter(None, messages[0].split(b' ')):

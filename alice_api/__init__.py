@@ -5,7 +5,7 @@ import traceback
 from flask import Flask
 from flask import request
 
-from alice_api.mail import YandexIMAP
+from alice_api.mail import YandexIMAP, ReadException, ImapException
 from alice_api.passport import get_user_email
 
 app = Flask(__name__)
@@ -15,6 +15,10 @@ DISAGREE = ['нет', 'не хочу', 'не надо']
 RELOAD = ['обновить', 'проверить почту', 'обнови', 'проверь почту', 'обновите', 'проверьте почту', 'проверь', 'проверить', 'проверьте']
 HELP = ['помощь', 'справка']
 EXIT = ['выход', 'хватит']
+
+
+class BadMessageException(Exception):
+    pass
 
 
 class States():
@@ -98,7 +102,7 @@ class UserRecord:
                 i += 1
                 if i == number:
                     return unit_mail
-        raise Exception('Простите, не могу прочитать это письмо.')
+        raise BadMessageException('Простите, не могу прочитать это письмо.')
 
     def del_mail(self, sender, number):
         sender -= 1
@@ -188,8 +192,20 @@ def main():
     }
     try:
         main_handler(request.json, response)
-    except Exception:
-        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())[:1023]
+    except ImapException:
+        response['response']['text'] = 'Не удалось авторизоваться в почте. ' \
+                                       'Проверьте доступ по протоколу IMAP ' \
+                                       'https://mail.yandex.ru/#setup/client'
+        response['response']['tts'] = 'Не удалось авторизоваться в почте. ' \
+                                      'Проверьте доступ по протоколу ИМАП ' \
+                                      'мэйл точка яндекс точка ру слэш хэш сетап слэш клиент'
+    except BadMessageException:
+        response['response']['text'] = 'Не удалось воспроизвести письмо\n{}'.format(traceback.format_exc())
+    except ReadException:
+        response['response']['text'] = 'Не удалось прочитать письма\n{}'.format(traceback.format_exc())
+
+
+    response['response']['text'] = response['response']['text'][:1023]
 
     return json.dumps(
         response,
