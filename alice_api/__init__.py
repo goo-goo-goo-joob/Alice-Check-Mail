@@ -382,7 +382,7 @@ def prep_read_message(req, res, cont=False):
 
     if len(content.split()) > 30:
         if cont:
-            content = ' '.join(content.split()[20:])
+            content = ' '.join(content.split()[20:50])
             do_cont_mail(req, res, name, content)
         else:
             content = ' '.join(content.split()[:20])
