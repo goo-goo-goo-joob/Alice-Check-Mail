@@ -487,6 +487,8 @@ def do_no_mails(req, res):
 def do_one_mail(req, res):
     # У вас 1 новое письмо от Имя с темой тема. Вам прочитать это письмо?
     user = storage.get(req['session']['user_id'])
+    user.num_sender = 0
+    user.num_letter = 0
     mail = user.get_mail_from(0, 0)
     name = mail['from']
     topic = mail['subject']
