@@ -211,19 +211,23 @@ def main_handler(req, res):
 
     req['request']['original_utterance'] = req['request']['original_utterance'].lower()
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in HELP:
+    if check_intent(req, 'YANDEX.HELP'):
         do_help(req, res)
         return
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in EXIT:
+    if check_intent(req, 'exit'):
         do_exit(req, res)
+        return
+
+    if check_intent(req, 'YANDEX.REPEAT'):
+        do_repeat(req, res)
         return
 
     if not user.is_auth:
         do_auth(req, res)
         return
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in RELOAD:
+    if check_intent(req, 'reload'):
         start_handler(req, res)
         return
 
@@ -239,11 +243,11 @@ def main_handler(req, res):
         return
 
     if curState == States.OneMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if check_intent(req, 'YANDEX.CONFIRM'):
             prep_read_message(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if check_intent(req, 'YANDEX.REJECT'):
             do_any_help(req, res)
             return
 
@@ -275,11 +279,11 @@ def main_handler(req, res):
 
     if curState == States.LargeMAIL:
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if check_intent(req, 'YANDEX.CONFIRM'):
             prep_read_message(req, res, cont=True)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if check_intent(req, 'YANDEX.REJECT'):
             other_mails(req, res)
             return
 
@@ -287,11 +291,11 @@ def main_handler(req, res):
         return
 
     if curState == States.AnyMoreMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if check_intent(req, 'YANDEX.CONFIRM'):
             start_handler(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if check_intent(req, 'YANDEX.REJECT'):
             do_any_help(req, res)
             return
 
@@ -299,11 +303,11 @@ def main_handler(req, res):
         return
 
     if curState == States.AnyHELP:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
+        if check_intent(req, 'YANDEX.CONFIRM'):
             start_handler(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+        if check_intent(req, 'YANDEX.REJECT'):
             do_exit(req, res)
             return
 
@@ -400,14 +404,20 @@ def numerals(num, word):
         # -ем
         if word == 'мо':
             return 'ем'
+        if word == 'ами':
+            return 'ами'
     if num % 10 > 1 and num % 10 < 5:
         # -ьма
         if word == 'мо':
             return 'ьма'
+        if word == 'ами':
+            return 'ами'
     if num % 10 == 1:
         # -ьмо
         if word == 'мо':
             return 'ьмо'
+        if word == 'ами':
+            return 'ой'
     return '*'
 
 
@@ -419,10 +429,9 @@ def do_error(req, res, msg):
 def do_not_understand(req, res):
     text = 'Я Вас не понимаю, повторите.'
     res['response']['text'] += text
-    temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
         temp_state = req['state']['session']['value']
-    save_state(res, temp_state)
+        save_state(res, temp_state)
 
 
 def do_exit(req, res):
@@ -434,10 +443,9 @@ def do_exit(req, res):
 def do_help(req, res):
     text = 'Я могу проверить вашу почту, для этого просто скажите: "Проверить почту".'
     res['response']['text'] += text
-    temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
         temp_state = req['state']['session']['value']
-    save_state(res, temp_state)
+        save_state(res, temp_state)
 
 
 # 0
@@ -479,7 +487,7 @@ def do_one_sender(req, res):
         user.num_sender = 1
     name = user.senders[user.num_sender]
     topics = user.get_sender_topics(user.num_sender)
-    text = 'От {0} пришло {1} пис{2} с темами: '.format(name, len(topics), numerals(len(topics), 'мо'))
+    text = 'От {0} пришло {1} пис{2} с тем{3}: '.format(name, len(topics), numerals(len(topics), 'мо'), numerals(len(topics), 'ами'))
     for i in range(len(topics)):
         text += '{0}. {1} '.format(i + 1, topics[i])
     text += 'Назовите номер письма, содержание которого хотите прослушать. '
@@ -561,3 +569,8 @@ def do_any_help(req, res):
 
 def save_state(res, state):
     res['session_state'] = {'value': state}
+
+
+def check_intent(req, tag):
+    return 'request' in req and 'nlu' in req['request'] and 'intents' in req['request']['nlu'] and tag in req['request']['nlu']['intents']
+
