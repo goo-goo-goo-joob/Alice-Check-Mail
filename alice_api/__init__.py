@@ -90,8 +90,6 @@ class UserRecord:
         """
         Получает письмо (отправитель, тема, текст) с заданным номером от заданного номера отправителя
         """
-        sender -= 1
-        number -= 1
         i = 0
         for unit_mail in self.inbox:
             if unit_mail['sender'] == self.senders[sender]:
@@ -101,8 +99,6 @@ class UserRecord:
         raise Exception('Простите, не могу прочитать это письмо.')
 
     def del_mail(self, sender, number):
-        sender -= 1
-        number -= 1
         i = 0
         for j, unit_mail in enumerate(self.inbox):
             if unit_mail['sender'] == self.senders[sender]:
@@ -112,7 +108,6 @@ class UserRecord:
                     return
 
     def get_sender_topics(self, sender):
-        sender -= 1
         topics = []
         for unit_mail in self.inbox:
             if unit_mail['sender'] == self.senders[sender]:
@@ -254,8 +249,8 @@ def main_handler(req, res):
 
         numMessge = get_number(req)
         if numMessge:
-            user.num_letter = numMessge
-            user.num_sender = list(user.get_senders.keys())[0]
+            user.num_letter = numMessge - 1
+            user.num_sender = 0
             prep_read_message(req, res)
             return
 
@@ -265,7 +260,7 @@ def main_handler(req, res):
     if curState == States.ManySENDERS:
 
         numSender = get_number(req)
-        user.num_sender = numSender
+        user.num_sender = numSender - 1
         if numSender:
             do_one_sender(req, res)
             return
@@ -462,7 +457,7 @@ def do_no_mails(req, res):
 def do_one_mail(req, res):
     # У вас 1 новое письмо от Имя с темой тема. Вам прочитать это письмо?
     user = storage.get(req['session']['user_id'])
-    mail = user.get_mail_from(1, 1)
+    mail = user.get_mail_from(0, 0)
     name = mail['from']
     topic = mail['subject']
 
@@ -476,7 +471,7 @@ def do_one_sender(req, res):
     # От имя пришло n1 писем с темами: 1. тема1 2. тема2. Назовите номер письма, содержание которого хотите прослушать
     user = storage.get(req['session']['user_id'])
     if not user.num_sender:
-        user.num_sender = 1
+        user.num_sender = 0
     name = user.senders[user.num_sender]
     topics = user.get_sender_topics(user.num_sender)
     text = 'От {0} пришло {1} пис{2} с темами: '.format(name, len(topics), numerals(len(topics), 'мо'))
