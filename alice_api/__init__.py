@@ -617,7 +617,7 @@ def do_repeat(req, res):
     res['response']['text'] += text
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
         temp_state = req['state']['session']['value']
-    save_state(res, temp_state)
+        save_state(res, temp_state)
 
 
 def check_intent(req, tag):
