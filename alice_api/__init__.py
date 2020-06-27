@@ -225,7 +225,8 @@ def main_handler(req, res):
 
     req['userRecord'] = user
 
-    req['request']['original_utterance'] = req['request']['original_utterance'].lower()
+    if 'original_utterance' in req['request']:
+        req['request']['original_utterance'] = req['request']['original_utterance'].lower()
 
     if check_intent(req, 'YANDEX.HELP'):
         do_help(req, res)
