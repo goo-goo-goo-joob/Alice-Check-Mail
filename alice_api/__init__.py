@@ -581,8 +581,8 @@ def save_state(res, state):
 
 def do_repeat(req, res):
     user = storage.get(req['session']['user_id'])
-    text = 'Я сказал: ' + user.last_said
-    if not user.last_said:
+    text = user.last_said
+    if not text:
         text = 'Я еще ничего не сказал.'
     res['response']['text'] += text
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
