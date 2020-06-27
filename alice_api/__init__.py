@@ -48,6 +48,7 @@ class UserRecord:
         self.num_letter = None
         self.num_sender = None
         self.senders = None
+        self.last_said = None
 
     @property
     def is_auth(self):
@@ -202,6 +203,9 @@ def main():
         response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())
 
     response['response']['text'] = response['response']['text'][:1023]
+
+    user = storage.get(request.json['session']['user_id'])
+    user.last_said = response['response']['text']
 
     return json.dumps(
         response,
@@ -573,3 +577,14 @@ def do_any_help(req, res):
 
 def save_state(res, state):
     res['session_state'] = {'value': state}
+
+
+def do_repeat(req, res):
+    user = storage.get(req['session']['user_id'])
+    text = 'Я сказал: ' + user.last_said
+    if not user.last_said:
+        text = 'Я еще ничего не сказал.'
+    res['response']['text'] += text
+    if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
+        temp_state = req['state']['session']['value']
+    save_state(res, temp_state)
