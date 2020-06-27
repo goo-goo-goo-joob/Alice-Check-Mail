@@ -391,7 +391,7 @@ def prep_read_message(req, res, cont=False):
     # Подготовка содержания перед отправкой пользователю
     user = storage.get(req['session']['user_id'])
     mail = user.get_mail_from(user.num_sender, user.num_letter)
-    content = 'Тема письма: ' + mail['subject'] + ' Текст письма: ' + mail['text']
+    content = '\nТема письма: ' + mail['subject'] + '\nТекст письма: ' + mail['text']
     name = mail['from']
 
     if len(content.split()) > 30:
