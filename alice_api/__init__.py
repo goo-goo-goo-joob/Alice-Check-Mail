@@ -98,9 +98,9 @@ class UserRecord:
         i = 0
         for unit_mail in self.inbox:
             if unit_mail['from'] == self.senders[sender]:
-                i += 1
                 if i == number:
                     return unit_mail
+                i += 1
         raise BadMessageException('Простите, не могу прочитать это письмо.')
 
     def del_mail(self, sender, number):
