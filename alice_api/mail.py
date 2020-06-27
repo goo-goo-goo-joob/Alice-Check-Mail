@@ -140,10 +140,14 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             unit_mail['subject'] = email.header.decode_header(msg['Subject'])[0]
             if isinstance(unit_mail['subject'][0], bytes):
                 unit_mail['subject'] = unit_mail['subject'][0].decode(unit_mail['subject'][1])
+            else:
+                unit_mail['subject'] = unit_mail['subject'][0]
             # Декодируем отправителя (может потеряться адрес отправителя)
             unit_mail['from'] = email.header.decode_header(msg['From'])[0]
             if isinstance(unit_mail['from'][0], bytes):
                 unit_mail['from'] = unit_mail['from'][0].decode(unit_mail['from'][1])
+            else:
+                unit_mail['from'] = unit_mail['from'][0]
             try:
                 # Сообщение может состоять из серии сообщений, поэтому для корректной отработки понадобится
                 # рекурсивно пройтись по всем пэйлоадам и декодировать их.
