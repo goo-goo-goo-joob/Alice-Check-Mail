@@ -209,11 +209,11 @@ def main():
         #                                 "button": response['response']['buttons']
         #                                 },
     except BadMessageException:
-        response['response']['text'] = 'Не удалось воспроизвести письмо\n{}'.format(traceback.format_exc())
+        response['response']['text'] = 'Не удалось воспроизвести письмо'
     except ReadException:
-        response['response']['text'] = 'Не удалось прочитать письма\n{}'.format(traceback.format_exc())
+        response['response']['text'] = 'Не удалось прочитать письма'
     except Exception:
-        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())
+        response['response']['text'] = 'Неизвестная ошибка'
 
     response['response']['text'] = response['response']['text'][:1023]
 

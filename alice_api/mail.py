@@ -149,6 +149,6 @@ class YandexIMAP(imaplib.IMAP4_SSL):
                 # рекурсивно пройтись по всем пэйлоадам и декодировать их.
                 unit_mail['text'] = decode_mail(msg)
             except Exception as e:
-                unit_mail['text'] = 'К сожалению, такое я еще читать не научилась.'
+                unit_mail['text'] = 'К сожалению, такое я еще читать не научился.'
             all_mails.append(unit_mail)
         return all_mails
