@@ -287,6 +287,13 @@ def main_handler(req, res):
 
         numSender = get_number(req)
         user.num_sender = numSender - 1
+        num_mails = list(user.get_senders.values())[user.num_sender]
+
+        if num_mails == 1:
+            user.num_letter = 0
+            prep_read_message(req, res)
+            return
+
         if numSender:
             do_one_sender(req, res)
             return
@@ -375,7 +382,7 @@ def prep_read_message(req, res, cont=False):
 
     if len(content.split()) > 30:
         if cont:
-            content = ' '.join(content.split()[20:])
+            content = ' '.join(content.split()[20:50])
             do_cont_mail(req, res, name, content)
         else:
             content = ' '.join(content.split()[:20])
