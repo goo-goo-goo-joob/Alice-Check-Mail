@@ -289,7 +289,8 @@ def main_handler(req, res):
         numMessge = get_number(req)
         if numMessge:
             user.num_letter = numMessge - 1
-            user.num_sender = 0
+            if not user.num_sender:
+                user.num_sender = 0
             prep_read_message(req, res)
             return
 
