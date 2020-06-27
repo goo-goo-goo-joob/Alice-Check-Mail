@@ -195,6 +195,19 @@ def main():
         response['response']['tts'] = 'Не удалось авторизоваться в почте. ' \
                                       'Проверьте доступ по протоколу ИМАП ' \
                                       'мэйл точка яндекс точка ру слэш хэш сетап слэш клиент'
+        # noinspection PyTypeChecker
+        response['response']['buttons'] = [{
+            "title": "Включить IMAP",
+            "payload": {},
+            "url": "https://mail.yandex.ru/#setup/client",
+            "hide": True}]
+        # noinspection PyTypeChecker
+        response['response']['card'] = {"type": "BigImage",
+                                        "image_id": "1652229/afa511d76876b7288ed5",
+                                        "title": "Включить IMAP",
+                                        "description": "Описание включения IMAP.",
+                                        "button": response['response']['buttons']
+                                        },
     except BadMessageException:
         response['response']['text'] = 'Не удалось воспроизвести письмо\n{}'.format(traceback.format_exc())
     except ReadException:
