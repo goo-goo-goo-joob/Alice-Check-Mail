@@ -40,6 +40,9 @@ class UserRecord:
         self.inbox = None
         self.state = None
         self.inbox_date = None
+        self.num_letter = None
+        self.num_sender = None
+        self.senders = None
 
     @property
     def is_auth(self):
@@ -72,6 +75,7 @@ class UserRecord:
                 senders[unit_mail['sender']] = 1
             else:
                 senders[unit_mail['sender']] += 1
+        self.senders = list(senders.keys())
         return senders
 
     @property
@@ -83,15 +87,38 @@ class UserRecord:
 
     def get_mail_from(self, sender, number):
         """
-        Получает письмо (отправитель, тема, текст) с заданным номером от заданного отправителя
+        Получает письмо (отправитель, тема, текст) с заданным номером от заданного номера отправителя
         """
+        sender -= 1
+        number -= 1
         i = 0
         for unit_mail in self.inbox:
-            if unit_mail['sender'] == sender:
+            if unit_mail['sender'] == self.senders[sender]:
                 i += 1
                 if i == number:
                     return unit_mail
         raise Exception('Простите, не могу прочитать это письмо.')
+
+    def del_mail(self, sender, number):
+        sender -= 1
+        number -= 1
+        i = 0
+        for j, unit_mail in enumerate(self.inbox):
+            if unit_mail['sender'] == self.senders[sender]:
+                i += 1
+                if i == number:
+                    del self.inbox[j]
+                    return
+
+    def get_sender_topics(self, sender):
+        sender -= 1
+        topics = []
+        for unit_mail in self.inbox:
+            if unit_mail['sender'] == self.senders[sender]:
+                topics.append(unit_mail['subject'])
+        return topics
+
+
 
 
 class SessionStorage:
@@ -172,14 +199,15 @@ def main():
 
 def main_handler(req, res):
     user = storage.get(req['session']['user_id'])
+    if 'user' not in req['session']:
+        # TODO: Если нет авторизации в Яндексе
+         pass
     if 'access_token' not in req['session']['user']:
         user.token = req['session']['user']['access_token']
     else:
         user.token = None
 
     req['userRecord'] = user
-
-    # TODO: Проверка на запрос выхода и помощи
 
     req['request']['original_utterance'] = req['request']['original_utterance'].lower()
 
@@ -226,6 +254,8 @@ def main_handler(req, res):
 
         numMessge = get_number(req)
         if numMessge:
+            user.num_letter = numMessge
+            user.num_sender = list(user.get_senders.keys())[0]
             prep_read_message(req, res)
             return
 
@@ -235,6 +265,7 @@ def main_handler(req, res):
     if curState == States.ManySENDERS:
 
         numSender = get_number(req)
+        user.num_sender = numSender
         if numSender:
             do_one_sender(req, res)
             return
@@ -316,10 +347,10 @@ def start_handler(req, res):
 
 def prep_read_message(req, res, cont=False):
     # Подготовка содержания перед отправкой пользователю
-
-    # TODO: content - содержание письма
-    content = 'Состояние сессии перестанет храниться, если в ответе навыка не вернуть свойство session_state. Поэтому если для конкретного запроса состояние не меняется, но его нужно продолжать хранить, навыку следует вернуть тот же объект session_state, что пришел в запросе.'
-    name = 'RandomName'
+    user = storage.get(req['session']['user_id'])
+    mail = user.get_mail_from(user.num_sender, user.num_letter)
+    content = 'Тема письма: ' + mail['subject'] + ' Текст письма: ' + mail['text']
+    name = mail['from']
 
     if len(content.split()) > 30:
         if cont:
@@ -334,8 +365,10 @@ def prep_read_message(req, res, cont=False):
 
 def other_mails(req, res):
     # Проверка есть ли еще непрочитанные письма у пользователя
+    user = storage.get(req['session']['user_id'])
+    user.del_mail(user.num_sender, user.num_letter)
 
-    if random.random() > 0.5:
+    if not user.get_count_mail:
         do_no_more_mails(req, res)
         return
     do_any_more_mails(req, res)
@@ -429,8 +462,10 @@ def do_no_mails(req, res):
 # 2
 def do_one_mail(req, res):
     # У вас 1 новое письмо от Имя с темой тема. Вам прочитать это письмо?
-    name = "RandomName"
-    topic = "RandomTopic"
+    user = storage.get(req['session']['user_id'])
+    mail = user.get_mail_from(1, 1)
+    name = mail['from']
+    topic = mail['subject']
 
     text = 'У вас 1 новое письмо от {0} с темой {1}. Вам прочитать это письмо? '.format(name, topic)
     res['response']['text'] += text
@@ -440,12 +475,11 @@ def do_one_mail(req, res):
 # 3
 def do_one_sender(req, res):
     # От имя пришло n1 писем с темами: 1. тема1 2. тема2. Назовите номер письма, содержание которого хотите прослушать
-    N = 3
-    name = "RandomName"
-    topics = []
-    for i in range(N):
-        topics.append('RandomTopic{}'.format(i + 1))
-
+    user = storage.get(req['session']['user_id'])
+    if not user.num_sender:
+        user.num_sender = 1
+    name = user.senders[user.num_sender]
+    topics = user.get_sender_topics(user.num_sender)
     text = 'От {0} пришло {1} пис{2} с темами: '.format(name, len(topics), numerals(len(topics), 'мо'))
     for i in range(len(topics)):
         text += '{0}. {1} '.format(i + 1, topics[i])
@@ -457,16 +491,9 @@ def do_one_sender(req, res):
 # 4
 def do_many_senders(req, res):
     # У вас: 1. n1 писем от Имя1 2. n2 писем от Имя2. Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя
-    N = 5
-    M = 3
-    names = []
-    Ntopics = dict()
-    for i in range(M):
-        names.append('RandomName{}'.format(i + 1))
-        if i + 1 == M:
-            Ntopics['RandomName{}'.format(i + 1)] = N - i
-        else:
-            Ntopics['RandomName{}'.format(i + 1)] = 1
+    user = storage.get(req['session']['user_id'])
+    Ntopics = user.get_senders
+    names = list(Ntopics.keys())
 
     text = "У вас: "
     for i, name in enumerate(names):
