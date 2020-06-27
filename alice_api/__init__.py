@@ -391,7 +391,7 @@ def prep_read_message(req, res, cont=False):
     # Подготовка содержания перед отправкой пользователю
     user = storage.get(req['session']['user_id'])
     mail = user.get_mail_from(user.num_sender, user.num_letter)
-    content = '\nТема письма: ' + mail['subject'] + '\nТекст письма: ' + mail['text']
+    content = '\\Тема письма: ' + mail['subject'] + '\\Текст письма: ' + mail['text']
     name = mail['from']
 
     if len(content.split()) > 30:
@@ -528,8 +528,8 @@ def do_one_sender(req, res):
     topics = user.get_sender_topics(user.num_sender)
     text = 'От {0} пришло {1} пис{2} с тем{3}: '.format(name, len(topics), numerals(len(topics), 'мо'), numerals(len(topics), 'ами'))
     for i in range(len(topics)):
-        text += '\n{0}. {1} '.format(i + 1, topics[i])
-    text += '\nНазовите номер письма, содержание которого хотите прослушать. '
+        text += '\\{0}. {1} '.format(i + 1, topics[i])
+    text += '\\Назовите номер письма, содержание которого хотите прослушать. '
     res['response']['text'] += text
     save_state(res, States.OneSENDER)
 
@@ -543,8 +543,8 @@ def do_many_senders(req, res):
 
     text = "У вас: "
     for i, name in enumerate(names):
-        text += '\n{0}. {1} пис{3} от {2}. '.format(i + 1, Ntopics[name], name, numerals(Ntopics[name], 'мо'))
-    text += '\nТемы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя. '
+        text += '\\{0}. {1} пис{3} от {2}. '.format(i + 1, Ntopics[name], name, numerals(Ntopics[name], 'мо'))
+    text += '\\Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя. '
     res['response']['text'] += text
     save_state(res, States.ManySENDERS)
 
@@ -553,7 +553,7 @@ def do_many_senders(req, res):
 def do_small_mail(req, res, name, content):
     # Письмо от Имя: (содержание)
 
-    text = 'Письмо от {0}: \n{1}'.format(name, content)
+    text = 'Письмо от {0}: \\{1}'.format(name, content)
     res['response']['text'] += text
     save_state(res, States.SmallMAIL)
     other_mails(req, res)
@@ -563,7 +563,7 @@ def do_small_mail(req, res, name, content):
 def do_large_mail(req, res, name, content):
     # Письмо от Имя: (содержание первые 20 слов). Это были первые 20 слов, дальше продолжать?
 
-    text = 'Письмо от {}: {}. \nЭто были первые 20 слов, продолжаю читать?'.format(name, content)
+    text = 'Письмо от {}: {}. \\Это были первые 20 слов, продолжаю читать?'.format(name, content)
     res['response']['text'] += text
     save_state(res, States.LargeMAIL)
 
@@ -572,7 +572,7 @@ def do_large_mail(req, res, name, content):
 def do_cont_mail(req, res, name, content):
     # Продолжение письма от имя: (продолжение)
 
-    text = 'Продолжение письма от {0}: \n{1}'.format(name, content)
+    text = 'Продолжение письма от {0}: \\{1}'.format(name, content)
     res['response']['text'] += text
     save_state(res, States.ContMAIL)
     other_mails(req, res)
@@ -592,7 +592,7 @@ def do_no_more_mails(req, res):
 def do_any_more_mails(req, res):
     # У вас еще есть непрочитанные сообщения, вы хотите их прослушать?
 
-    text = '\nУ вас еще есть непрочитанные сообщения, прочитать их? '
+    text = '\\У вас еще есть непрочитанные сообщения, прочитать их? '
     res['response']['text'] += text
     save_state(res, States.AnyMoreMAIL)
 
