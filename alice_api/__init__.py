@@ -386,12 +386,11 @@ def prep_read_message(req, res, cont=False):
 
 def other_mails(req, res):
     # Проверка есть ли еще непрочитанные письма у пользователя
-    user = storage.get(req['session']['user_id'])
-    user.del_mail(user.num_sender, user.num_letter)
-
-    if not user.get_count_mail:
-        do_no_more_mails(req, res)
-        return
+    # user = storage.get(req['session']['user_id'])
+    # user.del_mail(user.num_sender, user.num_letter)
+    # if not user.get_count_mail:
+    #     do_no_more_mails(req, res)
+    #     return
     do_any_more_mails(req, res)
     return
 
