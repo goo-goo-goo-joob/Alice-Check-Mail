@@ -1,6 +1,6 @@
-import json
-import random
 import datetime
+import json
+import traceback
 
 from flask import Flask
 from flask import request
@@ -15,6 +15,7 @@ DISAGREE = ['нет', 'не хочу', 'не надо']
 RELOAD = ['обновить', 'проверить почту', 'обнови', 'проверь почту', 'обновите', 'проверьте почту', 'проверь', 'проверить', 'проверьте']
 HELP = ['помощь', 'справка']
 EXIT = ['выход', 'хватит']
+
 
 class States():
     START = 11
@@ -119,8 +120,6 @@ class UserRecord:
         return topics
 
 
-
-
 class SessionStorage:
     def __init__(self):
         self.storage = {}
@@ -187,8 +186,10 @@ def main():
             "text": ""
         }
     }
-
-    main_handler(request.json, response)
+    try:
+        main_handler(request.json, response)
+    except Exception:
+        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())
 
     return json.dumps(
         response,
@@ -200,9 +201,8 @@ def main():
 def main_handler(req, res):
     user = storage.get(req['session']['user_id'])
     if 'user' not in req['session']:
-        # TODO: Если нет авторизации в Яндексе
-         pass
-    if 'access_token' not in req['session']['user']:
+        res['response']['text'] = 'Пожалуйста, войдите в аккаунт'
+    if 'access_token' in req['session']['user']:
         user.token = req['session']['user']['access_token']
     else:
         user.token = None
@@ -445,8 +445,7 @@ def do_auth(req, res):
     text = 'Пожалуйста, авторизуйтесь с помощью телефона.'
     res['response']['text'] += text
     save_state(res, States.AUTH)
-    if 'access_token' not in req['session']['user']:
-        res['start_account_linking'] = {}
+    res['start_account_linking'] = {}
 
 
 # 1
