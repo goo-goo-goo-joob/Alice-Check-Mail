@@ -72,10 +72,10 @@ class UserRecord:
         self._check_mail()
         senders = {}
         for unit_mail in self.inbox:
-            if unit_mail['sender'] not in senders:
-                senders[unit_mail['sender']] = 1
+            if unit_mail['from'] not in senders:
+                senders[unit_mail['from']] = 1
             else:
-                senders[unit_mail['sender']] += 1
+                senders[unit_mail['from']] += 1
         self.senders = list(senders.keys())
         return senders
 
@@ -94,7 +94,7 @@ class UserRecord:
         number -= 1
         i = 0
         for unit_mail in self.inbox:
-            if unit_mail['sender'] == self.senders[sender]:
+            if unit_mail['from'] == self.senders[sender]:
                 i += 1
                 if i == number:
                     return unit_mail
@@ -105,7 +105,7 @@ class UserRecord:
         number -= 1
         i = 0
         for j, unit_mail in enumerate(self.inbox):
-            if unit_mail['sender'] == self.senders[sender]:
+            if unit_mail['from'] == self.senders[sender]:
                 i += 1
                 if i == number:
                     del self.inbox[j]
@@ -115,7 +115,7 @@ class UserRecord:
         sender -= 1
         topics = []
         for unit_mail in self.inbox:
-            if unit_mail['sender'] == self.senders[sender]:
+            if unit_mail['from'] == self.senders[sender]:
                 topics.append(unit_mail['subject'])
         return topics
 
@@ -189,7 +189,7 @@ def main():
     try:
         main_handler(request.json, response)
     except Exception:
-        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())
+        response['response']['text'] = 'Неизвестная ошибка\n{}'.format(traceback.format_exc())[:1023]
 
     return json.dumps(
         response,
