@@ -21,7 +21,10 @@ def decode_mail(msg):
         return '\n'.join([decode_mail(m) for m in msg.get_payload()])
     text = msg.get_payload(decode=True)
     if isinstance(text, bytes):
-        text = text.decode('utf-8')
+        try:
+            text = text.decode('utf-8')
+        except UnicodeDecodeError:
+            text = msg.get_payload()
     if msg.get_content_type() == 'text/html':
         bs = BeautifulSoup(text, 'html5lib')
         body = bs.find('body')
@@ -134,13 +137,13 @@ class YandexIMAP(imaplib.IMAP4_SSL):
             msg = self.select_msg(num)
             unit_mail['raw'] = msg
             # Декодируем тему
-            unit_mail['subject'] = email.header.decode_header(msg['Subject'])[0][0]
-            if isinstance(unit_mail['subject'], bytes):
-                unit_mail['subject'] = unit_mail['subject'].decode('utf-8')
+            unit_mail['subject'] = email.header.decode_header(msg['Subject'])[0]
+            if isinstance(unit_mail['subject'][0], bytes):
+                unit_mail['subject'] = unit_mail['subject'][0].decode(unit_mail['subject'][1])
             # Декодируем отправителя (может потеряться адрес отправителя)
-            unit_mail['from'] = email.header.decode_header(msg['From'])[0][0]
-            if isinstance(unit_mail['from'], bytes):
-                unit_mail['from'] = unit_mail['from'].decode('utf-8')
+            unit_mail['from'] = email.header.decode_header(msg['From'])[0]
+            if isinstance(unit_mail['from'][0], bytes):
+                unit_mail['from'] = unit_mail['from'][0].decode(unit_mail['from'][1])
             try:
                 # Сообщение может состоять из серии сообщений, поэтому для корректной отработки понадобится
                 # рекурсивно пройтись по всем пэйлоадам и декодировать их.
