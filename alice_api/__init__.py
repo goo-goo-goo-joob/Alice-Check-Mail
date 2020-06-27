@@ -2,7 +2,6 @@ import json
 import random
 import datetime
 
-from enum import Enum, auto
 from flask import Flask
 from flask import request
 
@@ -11,42 +10,26 @@ from alice_api.passport import get_user_email
 
 app = Flask(__name__)
 
-AGREE = ['хочу', 'давай', 'да', 'ну давай']
-DISAGREE = ['нет']
-RELOAD = ['обновить', 'проверить почту']
+AGREE = ['хочу', 'давай', 'да', 'ну давай', 'ну хочу', 'ну да']
+DISAGREE = ['нет', 'не хочу', 'не надо']
+RELOAD = ['обновить', 'проверить почту', 'обнови', 'проверь почту', 'обновите', 'проверьте почту', 'проверь', 'проверить', 'проверьте']
 HELP = ['помощь', 'справка']
-EXIT = ['выход']
-
-
-# class States(Enum):
-#     START = auto()
-#     CHECK = auto()
-#     AUTH = auto()  # 0
-#     NoMAILS = auto()  # 1
-#     OneMAIL = auto()  # 2
-#     OneSENDER = auto()  # 3
-#     ManySENDERS = auto()  # 4
-#     SmallMAIL = auto()  # 5
-#     LargeMAIL = auto()  # 6
-#     ContMAIL = auto()  # 9
-#     NoMoreMAIL = auto()  # 7
-#     AnyMoreMAIL = auto()  # 8
-#     AnyHELP = auto()  # 10
+EXIT = ['выход', 'хватит']
 
 class States():
     START = 11
     CHECK = 12
     AUTH = 0  # 0
     NoMAILS = 1  # 1
-    OneMAIL = 2 # 2
-    OneSENDER = 3 # 3
+    OneMAIL = 2  # 2
+    OneSENDER = 3  # 3
     ManySENDERS = 4  # 4
-    SmallMAIL = 5 # 5
+    SmallMAIL = 5  # 5
     LargeMAIL = 6  # 6
-    ContMAIL = 9 # 9
+    ContMAIL = 9  # 9
     NoMoreMAIL = 7  # 7
     AnyMoreMAIL = 8  # 8
-    AnyHELP = 10 # 10
+    AnyHELP = 10  # 10
 
 
 class UserRecord:
@@ -57,6 +40,9 @@ class UserRecord:
         self.inbox = None
         self.state = None
         self.inbox_date = None
+        self.num_letter = None
+        self.num_sender = None
+        self.senders = None
 
     @property
     def is_auth(self):
@@ -89,6 +75,7 @@ class UserRecord:
                 senders[unit_mail['sender']] = 1
             else:
                 senders[unit_mail['sender']] += 1
+        self.senders = list(senders.keys())
         return senders
 
     @property
@@ -100,15 +87,38 @@ class UserRecord:
 
     def get_mail_from(self, sender, number):
         """
-        Получает письмо (отправитель, тема, текст) с заданным номером от заданного отправителя
+        Получает письмо (отправитель, тема, текст) с заданным номером от заданного номера отправителя
         """
+        sender -= 1
+        number -= 1
         i = 0
         for unit_mail in self.inbox:
-            if unit_mail['sender'] == sender:
+            if unit_mail['sender'] == self.senders[sender]:
                 i += 1
                 if i == number:
                     return unit_mail
         raise Exception('Простите, не могу прочитать это письмо.')
+
+    def del_mail(self, sender, number):
+        sender -= 1
+        number -= 1
+        i = 0
+        for j, unit_mail in enumerate(self.inbox):
+            if unit_mail['sender'] == self.senders[sender]:
+                i += 1
+                if i == number:
+                    del self.inbox[j]
+                    return
+
+    def get_sender_topics(self, sender):
+        sender -= 1
+        topics = []
+        for unit_mail in self.inbox:
+            if unit_mail['sender'] == self.senders[sender]:
+                topics.append(unit_mail['subject'])
+        return topics
+
+
 
 
 class SessionStorage:
@@ -133,44 +143,38 @@ class SessionStorage:
 storage = SessionStorage()
 
 
-def handler_start(req, res):
-    text = 'Я могу проверить вашу почту, просто скажите мне об этом.'
-    res['response']['text'] = text
-    storage.get(req['session']['user_id']).state = States.START
-
-
-def choose_start(req, res):
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
-        return handler_check(req, res)
-    return handler_start(req, res)
-
-
-def handler_check(req, res):
-    text = 'Проверила вашу почту. У вас 2 новых сообщения. Хотите прочитаю?'
-    res['response']['text'] = text
-
-
-def choose_check(req, res):
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
-        return handler_read(req, res)
-    return handler_start(req, res)
-
-
-def handler_read(req, res):
-    text = 'Учебный офис. Срочно! Важно! Арен Маркосян, Вас отчислили. Сорян.'
-    if random.random() > 0.5:
-        text += 'Хотите услышать следующее сообщение?'
-        storage.get(req['session']['user_id']).state = States.CHECK
-    else:
-        text += 'Больше нет новых сообщений.'
-        storage.get(req['session']['user_id']).state = States.START
-    res['response']['text'] = text
-
-
-finite_state_machine = {
-    States.START: choose_start,
-    States.CHECK: choose_check,
-}
+# def handler_start(req, res):
+#     text = 'Я могу проверить вашу почту, просто скажите мне об этом.'
+#     res['response']['text'] = text
+#     storage.get(req['session']['user_id']).state = States.START
+#
+#
+# def choose_start(req, res):
+#     if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+#         return handler_check(req, res)
+#     return handler_start(req, res)
+#
+#
+# def handler_check(req, res):
+#     text = 'Проверила вашу почту. У вас 2 новых сообщения. Хотите прочитаю?'
+#     res['response']['text'] = text
+#
+#
+# def choose_check(req, res):
+#     if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+#         return handler_read(req, res)
+#     return handler_start(req, res)
+#
+#
+# def handler_read(req, res):
+#     text = 'Учебный офис. Срочно! Важно! Арен Маркосян, Вас отчислили. Сорян.'
+#     if random.random() > 0.5:
+#         text += 'Хотите услышать следующее сообщение?'
+#         storage.get(req['session']['user_id']).state = States.CHECK
+#     else:
+#         text += 'Больше нет новых сообщений.'
+#         storage.get(req['session']['user_id']).state = States.START
+#     res['response']['text'] = text
 
 
 @app.route('/', methods=['POST'])
@@ -183,13 +187,6 @@ def main():
             "text": ""
         }
     }
-    #user = storage.get(request.json['session']['user_id'])
-    # if user.state == States.START:
-    #     choose_start(request.json, response)
-    # elif user.state == States.CHECK:
-    #     choose_check(request.json, response)
-    # else:
-    #     choose_start(request.json, response)
 
     main_handler(request.json, response)
 
@@ -201,22 +198,32 @@ def main():
 
 
 def main_handler(req, res):
-    # TODO: Проверка на запрос выхода и помощи
+    user = storage.get(req['session']['user_id'])
+    if 'user' not in req['session']:
+        # TODO: Если нет авторизации в Яндексе
+         pass
+    if 'access_token' not in req['session']['user']:
+        user.token = req['session']['user']['access_token']
+    else:
+        user.token = None
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in HELP:
+    req['userRecord'] = user
+
+    req['request']['original_utterance'] = req['request']['original_utterance'].lower()
+
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in HELP:
         do_help(req, res)
         return
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in EXIT:
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in EXIT:
         do_exit(req, res)
         return
 
-    # TODO: Проверка авторизованности пользователя
-    if (random.random() > 0.9):
+    if not user.is_auth:
         do_auth(req, res)
         return
 
-    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in RELOAD:
+    if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in RELOAD:
         start_handler(req, res)
         return
 
@@ -227,24 +234,16 @@ def main_handler(req, res):
         start_handler(req, res)
         return
 
-    user = storage.get(request.json['session']['user_id'])
-    if 'access_token' not in req['session']['user']:
-        user.token = req['session']['user']['access_token']
-    else:
-        user.token = None
-
-    req['userRecord'] = user
-
     if curState == States.AUTH:
         start_handler(req, res)
         return
 
     if curState == States.OneMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
             prep_read_message(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
             do_any_help(req, res)
             return
 
@@ -255,6 +254,8 @@ def main_handler(req, res):
 
         numMessge = get_number(req)
         if numMessge:
+            user.num_letter = numMessge
+            user.num_sender = list(user.get_senders.keys())[0]
             prep_read_message(req, res)
             return
 
@@ -264,6 +265,7 @@ def main_handler(req, res):
     if curState == States.ManySENDERS:
 
         numSender = get_number(req)
+        user.num_sender = numSender
         if numSender:
             do_one_sender(req, res)
             return
@@ -273,11 +275,11 @@ def main_handler(req, res):
 
     if curState == States.LargeMAIL:
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
             prep_read_message(req, res, cont=True)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
             other_mails(req, res)
             return
 
@@ -285,11 +287,11 @@ def main_handler(req, res):
         return
 
     if curState == States.AnyMoreMAIL:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
             start_handler(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
             do_any_help(req, res)
             return
 
@@ -297,12 +299,12 @@ def main_handler(req, res):
         return
 
     if curState == States.AnyHELP:
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in AGREE:
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in AGREE:
             start_handler(req, res)
             return
 
-        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'].lower() in DISAGREE:
-            do_exit(req,res)
+        if 'request' in req and 'original_utterance' in req['request'] and req['request']['original_utterance'] in DISAGREE:
+            do_exit(req, res)
             return
 
         do_not_understand(req, res)
@@ -310,12 +312,14 @@ def main_handler(req, res):
 
 
 def start_handler(req, res):
+    user = req['userRecord']
+    senders = user.get_senders
 
     # Получение числа отправителей
-    M = int(int(random.random() * 10) / 3)
+    M = len(senders)
 
     # Получение числа писем (общее)
-    N = int(int(random.random() * 10) / 3) + M
+    N = user.get_count_mail
 
     if N == 0:
         # Писем нет
@@ -342,11 +346,11 @@ def start_handler(req, res):
 
 
 def prep_read_message(req, res, cont=False):
-    # Подготовка содержания перд отправкой пользователю
-
-    # TODO: content - содержание письма
-    content = 'Состояние сессии перестанет храниться, если в ответе навыка не вернуть свойство session_state. Поэтому если для конкретного запроса состояние не меняется, но его нужно продолжать хранить, навыку следует вернуть тот же объект session_state, что пришел в запросе.'
-    name = 'RandomName'
+    # Подготовка содержания перед отправкой пользователю
+    user = storage.get(req['session']['user_id'])
+    mail = user.get_mail_from(user.num_sender, user.num_letter)
+    content = 'Тема письма: ' + mail['subject'] + ' Текст письма: ' + mail['text']
+    name = mail['from']
 
     if len(content.split()) > 30:
         if cont:
@@ -361,8 +365,10 @@ def prep_read_message(req, res, cont=False):
 
 def other_mails(req, res):
     # Проверка есть ли еще непрочитанные письма у пользователя
+    user = storage.get(req['session']['user_id'])
+    user.del_mail(user.num_sender, user.num_letter)
 
-    if random.random() > 0.5:
+    if not user.get_count_mail:
         do_no_more_mails(req, res)
         return
     do_any_more_mails(req, res)
@@ -406,12 +412,12 @@ def numerals(num, word):
 
 
 def do_error(req, res, msg):
-    text = 'Error!!! ' + msg
+    text = 'Ошибка. ' + msg
     res['response']['text'] += text
 
 
 def do_not_understand(req, res):
-    text = 'Я вас не понимаю, повторите '
+    text = 'Я Вас не понимаю, повторите.'
     res['response']['text'] += text
     temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
@@ -419,16 +425,14 @@ def do_not_understand(req, res):
     save_state(res, temp_state)
 
 
-def do_exit(req,res):
-
+def do_exit(req, res):
     text = 'Пока '
     res['response']['text'] += text
     res['response']['end_session'] = True
 
 
 def do_help(req, res):
-
-    text = 'Я могу помочь вам проверить вашу почту, для этого просто скажите: "Проверить почту"'
+    text = 'Я могу проверить вашу почту, для этого просто скажите: "Проверить почту".'
     res['response']['text'] += text
     temp_state = States.AUTH
     if 'state' in req and 'session' in req['state'] and 'value' in req['state']['session']:
@@ -438,11 +442,11 @@ def do_help(req, res):
 
 # 0
 def do_auth(req, res):
-    # TODO: Здесь должна быть авторизация
-
-    text = 'Пожалуйста авторизуйтесь '
+    text = 'Пожалуйста, авторизуйтесь с помощью телефона.'
     res['response']['text'] += text
     save_state(res, States.AUTH)
+    if 'access_token' not in req['session']['user']:
+        res['start_account_linking'] = {}
 
 
 # 1
@@ -458,8 +462,10 @@ def do_no_mails(req, res):
 # 2
 def do_one_mail(req, res):
     # У вас 1 новое письмо от Имя с темой тема. Вам прочитать это письмо?
-    name = "RandomName"
-    topic = "RandomTopic"
+    user = storage.get(req['session']['user_id'])
+    mail = user.get_mail_from(1, 1)
+    name = mail['from']
+    topic = mail['subject']
 
     text = 'У вас 1 новое письмо от {0} с темой {1}. Вам прочитать это письмо? '.format(name, topic)
     res['response']['text'] += text
@@ -469,12 +475,11 @@ def do_one_mail(req, res):
 # 3
 def do_one_sender(req, res):
     # От имя пришло n1 писем с темами: 1. тема1 2. тема2. Назовите номер письма, содержание которого хотите прослушать
-    N = 3
-    name = "RandomName"
-    topics = []
-    for i in range(N):
-        topics.append('RandomTopic{}'.format(i + 1))
-
+    user = storage.get(req['session']['user_id'])
+    if not user.num_sender:
+        user.num_sender = 1
+    name = user.senders[user.num_sender]
+    topics = user.get_sender_topics(user.num_sender)
     text = 'От {0} пришло {1} пис{2} с темами: '.format(name, len(topics), numerals(len(topics), 'мо'))
     for i in range(len(topics)):
         text += '{0}. {1} '.format(i + 1, topics[i])
@@ -486,16 +491,9 @@ def do_one_sender(req, res):
 # 4
 def do_many_senders(req, res):
     # У вас: 1. n1 писем от Имя1 2. n2 писем от Имя2. Темы какого отправителя вы хотите прослушать? Можно назвать порядковый номер отправителя
-    N = 5
-    M = 3
-    names = []
-    Ntopics = dict()
-    for i in range(M):
-        names.append('RandomName{}'.format(i + 1))
-        if i + 1 == M:
-            Ntopics['RandomName{}'.format(i + 1)] = N - i
-        else:
-            Ntopics['RandomName{}'.format(i + 1)] = 1
+    user = storage.get(req['session']['user_id'])
+    Ntopics = user.get_senders
+    names = list(Ntopics.keys())
 
     text = "У вас: "
     for i, name in enumerate(names):
@@ -519,7 +517,7 @@ def do_small_mail(req, res, name, content):
 def do_large_mail(req, res, name, content):
     # Письмо от Имя: (содержание первые 20 слов). Это были первые 20 слов, дальше продолжать?
 
-    text = 'Письмо от {}: {}. Это были первые 20 слов, дальше продолжать?'.format(name, content)
+    text = 'Письмо от {}: {}. Это были первые 20 слов, продолжаю читать?'.format(name, content)
     res['response']['text'] += text
     save_state(res, States.LargeMAIL)
 
@@ -548,7 +546,7 @@ def do_no_more_mails(req, res):
 def do_any_more_mails(req, res):
     # У вас еще есть непрочитанные сообщения, вы хотите их прослушать?
 
-    text = 'У вас еще есть непрочитанные сообщения, вы хотите их прослушать? '
+    text = 'У вас еще есть непрочитанные сообщения, прочитать их? '
     res['response']['text'] += text
     save_state(res, States.AnyMoreMAIL)
 
@@ -561,5 +559,6 @@ def do_any_help(req, res):
     res['response']['text'] += text
     save_state(res, States.AnyHELP)
 
+
 def save_state(res, state):
-    res['session_state'] = {'value' : state}
+    res['session_state'] = {'value': state}
